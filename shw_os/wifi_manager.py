@@ -1,10 +1,10 @@
 # SHW OS - WiFi Manager
 import network
 import time
-import ujson
+import json
 
 
-CONFIG_PATH = "/sd/config/wifi.json"
+WIFI_CONFIG = "wifi.json"
 
 
 class WiFiManager:
@@ -13,19 +13,19 @@ class WiFiManager:
 
     def load_config(self):
         try:
-            with open(CONFIG_PATH, "r") as f:
-                return ujson.load(f)
+            with open(WIFI_CONFIG, "r") as f:
+                return json.load(f)
         except:
             return None
 
     def save_config(self, ssid, password):
-        with open(CONFIG_PATH, "w") as f:
-            ujson.dump({"ssid": ssid, "password": password}, f)
+        with open(WIFI_CONFIG, "w") as f:
+            json.dump({"ssid": ssid, "password": password}, f)
 
-    def connect(self, ssid=None, password=None):
+    def connect(self, ssid=None, password=None, timeout=10):
         if ssid is None:
             cfg = self.load_config()
-            if cfg is None:
+            if not cfg:
                 return False
             ssid = cfg["ssid"]
             password = cfg["password"]
@@ -33,26 +33,26 @@ class WiFiManager:
         self.sta.active(True)
         self.sta.connect(ssid, password)
 
-        for _ in range(20):
+        for _ in range(timeout * 2):
             if self.sta.isconnected():
                 print("[WiFi] Connected:", self.sta.ifconfig()[0])
                 return True
             time.sleep(0.5)
 
-        print("[WiFi] Connection failed")
+        print("[WiFi] Failed to connect")
         return False
 
     def disconnect(self):
         self.sta.disconnect()
         self.sta.active(False)
 
-    def is_connected(self):
+    @property
+    def connected(self):
         return self.sta.isconnected()
 
+    @property
     def ip(self):
-        if self.sta.isconnected():
-            return self.sta.ifconfig()[0]
-        return None
+        return self.sta.ifconfig()[0] if self.sta.isconnected() else None
 
     def scan(self):
         self.sta.active(True)
